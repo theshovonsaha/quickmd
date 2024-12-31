@@ -3,19 +3,228 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  color-scheme: dark;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: #0a0a0a;
+  color: #ffffff;
+}
+
+/* MD Editor Core Styling */
+.w-md-editor {
+  background-color: #171717 !important;
+  box-shadow: none !important;
+  height: 100% !important;
+}
+
+.w-md-editor-content {
+  height: 100% !important;
+}
+
+/* Editor Toolbar */
+.w-md-editor-toolbar {
+  border-bottom: 1px solid #262626 !important;
+  background-color: #171717 !important;
+  padding: 8px !important;
+}
+
+.w-md-editor-toolbar ul li button {
+  color: #e5e5e5 !important;
+  border-radius: 6px !important;
+}
+
+.w-md-editor-toolbar ul li button:hover {
+  background-color: #262626 !important;
+}
+
+/* Editor Text Area */
+.w-md-editor-text {
+  background-color: #171717 !important;
+  padding-top: 0 !important;
+}
+
+.w-md-editor-text-input {
+  caret-color: #ffffff !important;
+}
+
+/* MD Preview Customization */
+.wmde-markdown {
+  font-size: 16px !important;
+  line-height: 1.8 !important;
+  background-color: #171717 !important;
+  color: #e5e5e5 !important;
+}
+
+/* Code block styling */
+.wmde-markdown pre {
+  background-color: #1a1a1a !important;
+  border: 1px solid #262626 !important;
+  border-radius: 8px !important;
+  margin: 1.5rem 0 !important;
+}
+
+.wmde-markdown code {
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
+/* Syntax highlighting */
+.wmde-markdown pre code {
+  color: #e5e5e5 !important;
+}
+
+.wmde-markdown pre code .token.comment {
+  color: #6b7280 !important;
+}
+
+.wmde-markdown pre code .token.string {
+  color: #84cc16 !important;
+}
+
+.wmde-markdown pre code .token.number {
+  color: #60a5fa !important;
+}
+
+.wmde-markdown pre code .token.keyword {
+  color: #f472b6 !important;
+}
+
+.wmde-markdown pre code .token.function {
+  color: #38bdf8 !important;
+}
+
+.wmde-markdown pre code .token.operator {
+  color: #94a3b8 !important;
+}
+
+.wmde-markdown pre code .token.punctuation {
+  color: #94a3b8 !important;
+}
+
+.wmde-markdown pre code .token.property {
+  color: #60a5fa !important;
+}
+
+.wmde-markdown pre code .token.class-name {
+  color: #fbbf24 !important;
+}
+
+/* Markdown elements */
+.wmde-markdown h1 {
+  font-size: 2.25rem !important;
+  font-weight: 700 !important;
+  margin-top: 2.5rem !important;
+  margin-bottom: 1.5rem !important;
+  color: #ffffff !important;
+}
+
+.wmde-markdown h2 {
+  font-size: 1.875rem !important;
+  font-weight: 600 !important;
+  margin-top: 2rem !important;
+  margin-bottom: 1.25rem !important;
+  color: #ffffff !important;
+}
+
+.wmde-markdown h3 {
+  font-size: 1.5rem !important;
+  font-weight: 600 !important;
+  margin-top: 1.75rem !important;
+  margin-bottom: 1rem !important;
+  color: #ffffff !important;
+}
+
+.wmde-markdown p {
+  margin-bottom: 1.25rem !important;
+  line-height: 1.8 !important;
+  color: #e5e5e5 !important;
+}
+
+.wmde-markdown blockquote {
+  border-left: 4px solid #3b82f6 !important;
+  padding: 1rem !important;
+  margin: 1.5rem 0 !important;
+  background-color: #1a1a1a !important;
+  border-radius: 0 8px 8px 0 !important;
+}
+
+.wmde-markdown blockquote p {
+  margin: 0 !important;
+  color: #94a3b8 !important;
+}
+
+.wmde-markdown ul,
+.wmde-markdown ol {
+  padding-left: 1.5rem !important;
+  margin: 1.25rem 0 !important;
+  color: #e5e5e5 !important;
+}
+
+.wmde-markdown li {
+  margin: 0.5rem 0 !important;
+}
+
+.wmde-markdown table {
+  width: 100% !important;
+  margin: 1.5rem 0 !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+.wmde-markdown th {
+  background-color: #1a1a1a !important;
+  border: 1px solid #262626 !important;
+  padding: 0.75rem !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+.wmde-markdown td {
+  background-color: #171717 !important;
+  border: 1px solid #262626 !important;
+  padding: 0.75rem !important;
+  color: #e5e5e5 !important;
+}
+
+.wmde-markdown img {
+  max-width: 100% !important;
+  border-radius: 8px !important;
+  margin: 1.5rem 0 !important;
+}
+
+.wmde-markdown hr {
+  border: 0 !important;
+  border-top: 1px solid #262626 !important;
+  margin: 2rem 0 !important;
+}
+
+/* Inline code */
+.wmde-markdown :not(pre) > code {
+  background-color: #1a1a1a !important;
+  color: #e5e5e5 !important;
+  padding: 0.2em 0.4em !important;
+  border-radius: 4px !important;
+  font-size: 0.875em !important;
+  border: 1px solid #262626 !important;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #171717;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #525252;
 }

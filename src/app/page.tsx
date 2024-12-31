@@ -1,101 +1,313 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
+import MDEditor from '@uiw/react-md-editor';
+import { 
+  Copy, FileDown, Eye, Edit2, Trash2, Save, 
+  Search, Settings, Download, Upload, Share,
+  Clock, Calendar, Code, Image
+} from 'lucide-react';
+import Header from './components/Header';
+import SavedDocuments from './components/SavedDocuments';
+import SaveDialog from './components/SaveDialog';
+import { SavedDocument, getAllDocuments, saveDocument, deleteDocument } from './utils/storage';
+
+const MDPreview = dynamic(
+  () => import('@uiw/react-markdown-preview'),
+  { ssr: false }
+);
+
+const defaultMarkdown = `# Welcome to Quick MD Viewer
+
+Start writing or paste your markdown here...`;
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [markdown, setMarkdown] = useState(defaultMarkdown);
+  const [isPreview, setIsPreview] = useState(false);
+  const [isSaveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [documents, setDocuments] = useState<SavedDocument[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [wordCount, setWordCount] = useState(0);
+  const [charCount, setCharCount] = useState(0);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  // Load documents and preferences
+  useEffect(() => {
+    setDocuments(getAllDocuments());
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+      setIsDarkMode(savedTheme === 'dark');
+    }
+    const savedAutoSave = localStorage.getItem('autoSave');
+    if (savedAutoSave) {
+      setAutoSaveEnabled(savedAutoSave === 'true');
+    }
+  }, []);
+
+  // Auto-save functionality
+  useEffect(() => {
+    let autoSaveTimer: NodeJS.Timeout;
+    if (autoSaveEnabled && markdown !== defaultMarkdown) {
+      autoSaveTimer = setTimeout(() => {
+        const timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
+        saveDocument(`Autosave ${timestamp}`, markdown);
+        setDocuments(getAllDocuments());
+        setLastSaved(new Date());
+      }, 30000); // Auto-save every 30 seconds
+    }
+    return () => clearTimeout(autoSaveTimer);
+  }, [markdown, autoSaveEnabled]);
+
+  // Update word and character count
+  useEffect(() => {
+    setCharCount(markdown.length);
+    setWordCount(markdown.trim().split(/\s+/).filter(Boolean).length);
+  }, [markdown]);
+
+  const handleSave = (title: string) => {
+    const newDoc = saveDocument(title, markdown);
+    setDocuments(getAllDocuments());
+    setLastSaved(new Date());
+  };
+
+  const handleDelete = (id: string) => {
+    deleteDocument(id);
+    setDocuments(getAllDocuments());
+  };
+
+  const handleSelect = (doc: SavedDocument) => {
+    setMarkdown(doc.content);
+    setIsPreview(false);
+  };
+
+  const handleCheckboxChange = useCallback((index: number) => {
+    const lines = markdown.split('\n');
+    let checkboxCount = 0;
+    
+    const updatedLines = lines.map(line => {
+      if (line.match(/^\s*- \[([ x])\]/i)) {
+        if (checkboxCount === index) {
+          return line.replace(/\[([ x])\]/i, line.includes('[x]') ? '[ ]' : '[x]');
+        }
+        checkboxCount++;
+      }
+      return line;
+    });
+    
+    setMarkdown(updatedLines.join('\n'));
+  }, [markdown]);
+
+  // Handle file paste (including images)
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (const item of Array.from(items)) {
+      if (item.type.indexOf('image') !== -1) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file) continue;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const imageData = event.target?.result;
+          const imageMarkdown = `\n![Pasted Image](${imageData})\n`;
+          setMarkdown(prev => prev + imageMarkdown);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  };
+
+  const filteredDocuments = documents.filter(doc => 
+    doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    doc.content.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className={isDarkMode ? 'dark' : ''}>
+      <Header />
+      <main className="min-h-screen pt-20 pb-8 px-4 sm:px-6 lg:px-8 bg-neutral-950 dark:bg-neutral-950">
+        <div className="max-w-7xl mx-auto">
+          {/* Search and Settings Bar */}
+          <div className="mb-4 flex items-center justify-between">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
+              <input
+                type="text"
+                placeholder="Search documents..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => {
+                  setAutoSaveEnabled(!autoSaveEnabled);
+                  localStorage.setItem('autoSave', (!autoSaveEnabled).toString());
+                }}
+                className={`px-3 py-1.5 rounded-lg text-sm ${
+                  autoSaveEnabled ? 'bg-green-600' : 'bg-neutral-700'
+                }`}
+              >
+                <Clock className="h-4 w-4 inline mr-2" />
+                Auto-save
+              </button>
+              <button
+                onClick={() => {
+                  setIsDarkMode(!isDarkMode);
+                  localStorage.setItem('theme', !isDarkMode ? 'dark' : 'light');
+                }}
+                className="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Document List */}
+          <SavedDocuments
+            documents={filteredDocuments}
+            onSelect={handleSelect}
+            onDelete={handleDelete}
+            onUpload={(title, content) => {
+              const newDoc = saveDocument(title, content);
+              setDocuments(getAllDocuments());
+              setMarkdown(content);
+            }}
+          />
+
+          {/* Status Bar */}
+          <div className="mb-4 text-sm text-neutral-400 flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <span>{wordCount} words</span>
+              <span>{charCount} characters</span>
+            </div>
+            {lastSaved && (
+              <span>Last saved: {lastSaved.toLocaleTimeString()}</span>
+            )}
+          </div>
+
+          {/* Editor Container */}
+          <div className="bg-neutral-900 rounded-xl shadow-lg border border-neutral-800 overflow-hidden">
+            {/* Toolbar */}
+            <div className="flex items-center justify-between px-4 py-3 bg-neutral-800 border-b border-neutral-700">
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setIsPreview(!isPreview)}
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md transition-colors
+                    text-white hover:bg-neutral-700 active:bg-neutral-600"
+                >
+                  {isPreview ? (
+                    <>
+                      <Edit2 className="h-4 w-4 mr-2" />
+                      Edit
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-4 w-4 mr-2" />
+                      Preview
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setSaveDialogOpen(true)}
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md transition-colors
+                    text-white hover:bg-neutral-700 active:bg-neutral-600"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Save
+                </button>
+                <button
+                  onClick={() => navigator.clipboard.writeText(markdown)}
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md transition-colors
+                    text-white hover:bg-neutral-700 active:bg-neutral-600"
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy
+                </button>
+                <button
+                  onClick={() => {
+                    const element = document.createElement('a');
+                    const file = new Blob([markdown], {type: 'text/markdown'});
+                    element.href = URL.createObjectURL(file);
+                    element.download = 'document.md';
+                    document.body.appendChild(element);
+                    element.click();
+                    document.body.removeChild(element);
+                  }}
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md transition-colors
+                    text-white hover:bg-neutral-700 active:bg-neutral-600"
+                >
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Download
+                </button>
+                <button
+                  onClick={() => {
+                    if (window.confirm('Are you sure you want to clear the editor?')) {
+                      setMarkdown('');
+                    }
+                  }}
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-red-400 rounded-md transition-colors
+                    hover:bg-red-500/20"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            {/* Editor/Preview Area */}
+            <div 
+              className="min-h-[calc(100vh-12rem)]"
+              onPaste={handlePaste}
+            >
+              {!isPreview ? (
+                <MDEditor
+                  value={markdown}
+                  onChange={(val) => setMarkdown(val || '')}
+                  preview="edit"
+                  className="w-full border-none !min-h-[calc(100vh-12rem)]"
+                />
+              ) : (
+                <div className="p-8 bg-neutral-900">
+                  <MDPreview 
+                    source={markdown}
+                    className="prose prose-invert max-w-none"
+                    components={{
+                      input: (props: any) => {
+                        if (props.type === 'checkbox') {
+                          return (
+                            <input
+                              type="checkbox"
+                              checked={props.checked}
+                              onChange={() => handleCheckboxChange(props.index)}
+                              className="cursor-pointer rounded border-gray-500 text-blue-600 focus:ring-blue-500"
+                            />
+                          );
+                        }
+                        return <input {...props} />;
+                      }
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+      <SaveDialog
+        isOpen={isSaveDialogOpen}
+        onClose={() => setSaveDialogOpen(false)}
+        onSave={handleSave}
+      />
     </div>
   );
 }
