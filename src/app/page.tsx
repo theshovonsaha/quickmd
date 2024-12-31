@@ -5,8 +5,7 @@ import dynamic from 'next/dynamic';
 import MDEditor from '@uiw/react-md-editor';
 import { 
   Copy, FileDown, Eye, Edit2, Trash2, Save, 
-  Search, Settings, Download, Upload, Share,
-  Clock, Calendar, Code, Image
+  Search, Settings, Clock
 } from 'lucide-react';
 import Header from './components/Header';
 import SavedDocuments from './components/SavedDocuments';
@@ -21,6 +20,13 @@ const MDPreview = dynamic(
 const defaultMarkdown = `# Welcome to Quick MD Viewer
 
 Start writing or paste your markdown here...`;
+
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  type: string;
+  checked?: boolean;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  index?: number;
+}
 
 export default function Home() {
   const [markdown, setMarkdown] = useState(defaultMarkdown);
@@ -71,6 +77,8 @@ export default function Home() {
     const newDoc = saveDocument(title, markdown);
     setDocuments(getAllDocuments());
     setLastSaved(new Date());
+    // Add feedback
+    setMarkdown(newDoc.content); // Optional: switch to the new document
   };
 
   const handleDelete = (id: string) => {
@@ -174,8 +182,7 @@ export default function Home() {
             documents={filteredDocuments}
             onSelect={handleSelect}
             onDelete={handleDelete}
-            onUpload={(title, content) => {
-              const newDoc = saveDocument(title, content);
+            onUpload={(_title, content) => {
               setDocuments(getAllDocuments());
               setMarkdown(content);
             }}
@@ -281,13 +288,13 @@ export default function Home() {
                     source={markdown}
                     className="prose prose-invert max-w-none"
                     components={{
-                      input: (props: any) => {
+                      input: (props: InputProps) => {
                         if (props.type === 'checkbox') {
                           return (
                             <input
                               type="checkbox"
                               checked={props.checked}
-                              onChange={() => handleCheckboxChange(props.index)}
+                              onChange={() => handleCheckboxChange(props.index!)}
                               className="cursor-pointer rounded border-gray-500 text-blue-600 focus:ring-blue-500"
                             />
                           );
